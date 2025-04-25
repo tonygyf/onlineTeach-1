@@ -29,10 +29,13 @@ public class AccountController {
     private StringRedisTemplate stringRedisTemplate;
 
     @PostMapping("/register")
-    public Result register(@RequestParam String username,  String password,Integer type) {
+    public Result register(@RequestBody Account newAccount) {
         /**
          * 用于用户注册
          */
+        String username=newAccount.getUsername();
+        String password=newAccount.getPassword();
+        Integer type=newAccount.getType();
         Account account = accountService.findByUsername(username);
         if (account == null) {
             accountService.register(username, password,type);
