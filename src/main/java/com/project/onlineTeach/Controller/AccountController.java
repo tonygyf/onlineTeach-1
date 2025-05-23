@@ -1,4 +1,5 @@
 package com.project.onlineTeach.Controller;
+import com.project.onlineTeach.DTO.ReqUserLogin;
 import com.project.onlineTeach.Util.JwtUtil;
 import com.project.onlineTeach.Util.Md5Util;
 import com.project.onlineTeach.Util.ThreadLocalUtil;
@@ -29,10 +30,14 @@ public class AccountController {
     private StringRedisTemplate stringRedisTemplate;
 
     @PostMapping("/register")
-    public Result register(@RequestParam String username,  String password,Integer type) {
+    public Result register(@RequestBody Account uaccount) {
         /**
          * 用于用户注册
          */
+        String username = uaccount.getUsername();
+        String password = uaccount.getPassword();
+        int type = uaccount.getType();
+
         Account account = accountService.findByUsername(username);
         if (account == null) {
             accountService.register(username, password,type);
@@ -43,11 +48,12 @@ public class AccountController {
     }
 
     @PostMapping("/login")
-    public Result login(@RequestParam String username,
-                         String password) {
+    public Result login(@RequestBody ReqUserLogin reqUserLogin) {
         /**
          * 用户登陆
          */
+        String username = reqUserLogin.getUsername();
+        String password = reqUserLogin.getPassword();
         Account account = accountService.findByUsername(username);
         if (account == null) {
             return Result.error("用户不存在!");

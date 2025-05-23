@@ -7,7 +7,7 @@ import org.apache.ibatis.annotations.*;
 public interface AccountMapper {
 
 
-     @Select("SELECT * from account where username=#{username}")
+    @Select("SELECT * from account where username=#{username}")
     Account findByUsername(String username);
 
     @Insert("insert into account(username,password,type) values (#{username},#{md5Password},#{type})")
