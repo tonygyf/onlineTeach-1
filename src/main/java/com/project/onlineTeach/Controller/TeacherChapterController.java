@@ -8,9 +8,11 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @RestController
-@RequestMapping("/chapter")
+@RequestMapping("/teacher/chapter")
 public class TeacherChapterController {
 
     @Autowired
@@ -92,6 +94,82 @@ public class TeacherChapterController {
         } catch (Exception e) {
             e.printStackTrace();
             return Result.error("删除文件失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取课程章节列表
+     * @param courseId 课程ID
+     * @return 章节列表
+     */
+    @GetMapping("/list/{courseId}")
+    public Result<List<Map<String, Object>>> getChaptersByCourse(@PathVariable String courseId) {
+        try {
+            String sql = """
+                SELECT c.*, 
+                       (SELECT COUNT(*) FROM chapter_file cf WHERE cf.chapterId = c.chapterId) as fileCount
+                FROM chapter c 
+                WHERE c.courseId = ? 
+                ORDER BY c.orderNum
+                """;
+            List<Map<String, Object>> chapters = jdbcTemplate.queryForList(sql, courseId);
+            return Result.success(chapters);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取章节列表失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取章节文件列表
+     * @param chapterId 章节ID
+     * @return 文件列表
+     */
+    @GetMapping("/files/{chapterId}")
+    public Result<List<Map<String, Object>>> getChapterFiles(@PathVariable Integer chapterId) {
+        try {
+            String sql = "SELECT * FROM chapter_file WHERE chapterId = ? ORDER BY uploadTime DESC";
+            List<Map<String, Object>> files = jdbcTemplate.queryForList(sql, chapterId);
+            return Result.success(files);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取章节文件列表失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 上传章节文件
+     * @param file 文件
+     * @param chapterId 章节ID
+     * @param fileName 文件名
+     * @param fileType 文件类型
+     * @param description 文件描述
+     * @return 上传结果
+     */
+    @PostMapping("/file/upload")
+    public Result<Map<String, Object>> uploadChapterFile(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("chapterId") Integer chapterId,
+            @RequestParam("fileName") String fileName,
+            @RequestParam("fileType") String fileType,
+            @RequestParam("description") String description) {
+        try {
+            // 上传文件到OSS
+            String fileUrl = AliOssUtil.uploadFile(file.getOriginalFilename(), file.getInputStream());
+            
+            // 保存文件信息到数据库
+            String sql = "INSERT INTO chapter_file (chapterId, fileName, fileUrl, fileType, description, uploadTime) VALUES (?, ?, ?, ?, ?, ?)";
+            String uploadTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            jdbcTemplate.update(sql, chapterId, fileName, fileUrl, fileType, description, uploadTime);
+            
+            // 获取新插入的文件ID
+            String querySql = "SELECT MAX(fileId) as fileId FROM chapter_file WHERE chapterId = ? AND fileName = ?";
+            Map<String, Object> result = jdbcTemplate.queryForMap(querySql, chapterId, fileName);
+            
+            return Result.success(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("上传文件失败: " + e.getMessage());
         }
     }
 }
